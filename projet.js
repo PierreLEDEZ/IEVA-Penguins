@@ -19,18 +19,21 @@ Appli.prototype.creerScene = function(params){
 	this.addActeur(tux);
 
 	//generate grass
-	let herbes = [];
+	this.herbes = [];
 	max = 50;
 	min = -50;
-	for (let i=0; i < 200; i++) {
+	for (let i=0; i < 50; i++) {
 		x = Math.floor(Math.random() * (max - min) ) + min;
 		z = Math.floor(Math.random() * (max - min) ) + min;
 		let temp_h = new Herbe("herbe"+i.toString(), {couleur: 0xaaff55}, this);
+		console.log(this.acteurs);
 		this.addActeur(temp_h);
 		temp_h.setPosition(x, 0, z);
-		temp_h.initNimbus();
-		herbes.push(temp_h);
+		temp_h.nimbus.placeNimbus();
+		this.herbes.push(temp_h);
 	}
+
+	console.log(this.acteurs);
 
 	/*var herbe1 = new Herbe("herbe1",{couleur: 0xff0000},this) ; 
 	this.addActeur(herbe1) ;
@@ -70,14 +73,31 @@ function Nimbus(name, parent, sim, radius, height) {
 Nimbus.prototype = Object.create(Acteur.prototype);
 Nimbus.prototype.constructor = Nimbus;
 
+Nimbus.prototype.placeNimbus = function(dt) {
+	this.setPosition(this.parent.getPosition().x, 0, this.parent.getPosition().z);
+}
+
+Nimbus.prototype.delete = function() {
+	for (let i=0; i<this.sim.acteurs.length; i++) {
+		if (this.sim.acteurs[i].nom === this.nom) {
+			this.sim.acteurs.splice(i, 1);
+			this.sim.scene.remove(this.objet3d);
+			return;
+		}
+	}
+}
+
 function Acteur1(nom,data,sim,vit){
 	Acteur.call(this,nom,data,sim) ;
 	this.clock = 0 
 
+	this.changeDirection = 0;
 	this.speed = vit;
-	this.vit_x = vit;
-	this.vit_z = vit;
-	this.vitesse = new THREE.Vector3(this.vit_x, 0, this.vit_z);
+
+	this.pheromones = [];
+	this.secretionTime = 0;
+	this.eating = false;
+	this.hungry = 0;
 
 	var repertoire = data.path + "/" ; 
 	var fObj       = data.obj + ".obj" ; 
@@ -87,30 +107,71 @@ function Acteur1(nom,data,sim,vit){
 	this.setObjet3d(obj) ;
 	this.target = this.getTarget();
 	this.objet3d.lookAt(this.target.x, 0, this.target.z);
-	this.ninbus = new Nimbus("blabla", this, sim, 1.5, 4);
-	sim.addActeur(this.ninbus);
-	this.ninbus.setPosition(this.getPosition().x, 0, this.getPosition().z);
+	this.nimbus = new Nimbus("blabla", this, sim, 1.5, 4);
+	sim.addActeur(this.nimbus);
+	this.nimbus.placeNimbus();
 }
 
 Acteur1.prototype = Object.create(Acteur.prototype) ; 
-Acteur1.prototype.constructor = Acteur1 ; 
+Acteur1.prototype.constructor = Acteur1 ;
+
+Acteur1.prototype.addPheromone = function(dt) {
+	let pheromone = new Pheromone("Pheromone_"+Math.random().toString(36).substr(2, 14), this, sim, 2, 1);
+	this.sim.addActeur(pheromone);
+	pheromone.setPosition(this.getPosition().x, 0.5, this.getPosition().z);
+	this.pheromones.push(pheromone);
+}
+
+Acteur1.prototype.updatePheromones = function(dt) {
+	for (let i=0; i<this.pheromones.length; i++) {
+		this.pheromones[i].actualiser(dt);
+	}
+}
 
 Acteur1.prototype.actualiser = function(dt){
-	//console.log(this.sim.horloge);
-	if (Math.random() > 0.95) {
-		console.log("Acquiring new target");
+
+	let time = this.sim.horloge;
+
+	this.hungry += 2*dt;
+
+	if (time - this.changeDirection > 5 && !this.eating) {
 		this.target = this.getTarget();
 		this.objet3d.lookAt(this.target.x, 0, this.target.z);
+		this.changeDirection = time;
 	}
+
+	if (time - this.secretionTime > 0.2) {
+		this.addPheromone();
+		this.secretionTime = time;
+	}
+
 	this.check();
+	this.checkGrass();
 	this.move(dt);
-	this.ninbus.setPosition(this.getPosition().x, 0, this.getPosition().z);
-	//this.setOrientation(t) ;  
-	//this.setPosition(2*Math.sin(t),0.0,3*Math.cos(2*t)) ; 
+	this.updatePheromones(dt);
+	this.updateOverlay();
+	this.nimbus.placeNimbus();
+}
+
+Acteur1.prototype.updateOverlay = function() {
+	pos_x_overlay = document.getElementById("pos_x");
+	pos_x_overlay.innerHTML = "X :" + this.getPosition().x;
+
+	pos_z_overlay = document.getElementById("pos_z");
+	pos_z_overlay.innerHTML = "Z :" + this.getPosition().z;
+
+	eating_overlay = document.getElementById("eating");
+	eating_overlay.innerHTML = this.eating;
+
+	target_overlay = document.getElementById("target");
+	target_overlay.innerHTML = JSON.stringify(this.target);
+
+	others_overlay = document.getElementById("others");
+	others_overlay.innerHTML = this.sim.herbes.length;
 }
 
 Acteur1.prototype.move = function(dt) {
-	let pos = this.getPosition();
+	this.objet3d.lookAt(this.target.x, 0, this.target.z);
 	this.objet3d.translateZ(this.speed*dt);
 	//this.setPosition(pos.x+this.vit_x, 0.5, pos.z+this.vit_z);
 }
@@ -123,28 +184,39 @@ Acteur1.prototype.getTarget = function(dt) {
 
 Acteur1.prototype.check = function(dt){
 	let pos = this.getPosition();
-	let out = false;
-
-	if (pos.x > 50) {
-		out = true;
-		this.vit_x = -this.vit_x;
-	}
-	if (pos.x < -50) {
-		out = true;
-		this.vit_x = -this.vit_x;
-	}
-	if (pos.z > 50) {
-		out = true;
-		this.vit_z = -this.vit_z;
-	}
-	if (pos.z < 50) {
-		out = true;
-		this.vit_z = -this.vit_z;
-	}
-	if (out) {
+	if (pos.x > 50 || pos.x < -50 || pos.z > 50 || pos.z < -50) {
 		this.target = this.getTarget();
+		this.objet3d.lookAt(this.target.x, 0, this.target.z);
 	}
-	this.vitesse = new THREE.Vector3(this.vit_x, 0, this.vit_z);
+}
+
+Acteur1.prototype.checkGrass = function(dt) {
+	if (!this.eating) {
+		for (let i=0; i<this.sim.herbes.length; i++) {
+			xh = this.sim.herbes[i].getPosition().x;
+			zh = this.sim.herbes[i].getPosition().z;
+			dist = Math.sqrt((xh-this.getPosition().x)**2 + (zh-this.getPosition().z)**2)
+			if (dist <= (this.sim.herbes[i].nimbus.radius + this.nimbus.radius)) {
+				this.target = {x: xh,y: 0,z: zh};
+				this.objet3d.lookAt(this.target.x, 0, this.target.z);
+				this.eating = true;
+				return;
+			}
+		}
+	} else {
+		for (let i=0; i<this.sim.herbes.length; i++) {
+			xh = this.sim.herbes[i].getPosition().x;
+			zh = this.sim.herbes[i].getPosition().z;
+			dist = Math.sqrt((xh-this.getPosition().x)**2 + (zh-this.getPosition().z)**2)
+			if (dist <= (this.sim.herbes[i].nimbus.radius)) {
+				this.sim.herbes[i].delete();
+				break;
+			}
+		}
+		this.eating = false;
+		this.getTarget();
+		this.objet3d.lookAt(this.target.x, 0, this.target.z);
+	}
 }
 
 // La classe décrivant les touffes d'herbe
@@ -159,14 +231,28 @@ function Herbe(nom,data,sim){
 	var sph = creerSphere(nom,{rayon:rayon, couleur:couleur}) ;
 	this.setObjet3d(sph) ; 
 
-	this.ninbus = new Nimbus("blabla", this, sim, 0.5, 0.5);
-	sim.addActeur(this.ninbus);
+	this.nimbus = new Nimbus("blabla", this, sim, 0.5, 0.5);
+	sim.addActeur(this.nimbus);
+	this.nimbus.placeNimbus();
 }
 Herbe.prototype = Object.create(Acteur.prototype) ; 
 Herbe.prototype.constructor = Herbe ; 
 
-Herbe.prototype.initNimbus = function(dt) {
-	this.ninbus.setPosition(this.getPosition().x, 0, this.getPosition().z);
+Herbe.prototype.delete = function() {
+	this.nimbus.delete();
+	for (let i=0; i<this.sim.acteurs.length; i++) {
+		if (this.sim.acteurs[i].nom === this.nom) {
+			this.sim.acteurs.splice(i, 1);
+			this.sim.scene.remove(this.objet3d);
+			break;
+		}
+	}
+	for (let i=0; i<this.sim.herbes.length; i++) {
+		if (this.sim.herbes[i].nom === this.nom) {
+			this.sim.herbes.splice(i, 1);
+			break;
+		}
+	}
 }
 
 // La classe décrivant les rochers
@@ -186,8 +272,31 @@ function Rocher(nom,data,sim){
 Rocher.prototype = Object.create(Acteur.prototype) ; 
 Rocher.prototype.constructor = Rocher ; 
 
+// =================================
 
+function Pheromone(name, parent, sim, radius, age){
+	Acteur.call(this,name, { "radius": radius, "age": age }, sim);
 
+	this.age = 10 || age;
+	this.max_age = this.age;
+	this.color = 0x0000fe;
+	this.radius = 0.5 ||  radius;
+	this.parent = parent;
 
+	var sph = creerSphere(name,{rayon:this.radius, couleur:this.color});
+	sph.material.transparent = true;
+	sph.material.opacity = 1;
+	this.setObjet3d(sph);
+}
+Pheromone.prototype = Object.create(Acteur.prototype) ;
+Pheromone.prototype.constructor = Pheromone;
 
-
+Pheromone.prototype.actualiser = function(dt){
+	this.age -= 4*dt;
+	let scale_factor = 5;
+	this.objet3d.geometry.scale(1-dt/scale_factor,1-dt/scale_factor,1-dt/scale_factor);
+	this.objet3d.material.opacity -= dt/4;
+	if(this.age < 0) {
+		this.delete();
+	}
+}

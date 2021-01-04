@@ -6,3 +6,12 @@ html, body, canvas {
 	margin: 0 ;
 	overflow: hidden ;
 }
+
+#overlay {
+	position: absolute;
+	top: 5%;
+	left: 85%;
+	z-index: 100;
+	display: flex;
+	flex-direction: column;
+}

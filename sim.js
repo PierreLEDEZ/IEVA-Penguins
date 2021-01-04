@@ -14,7 +14,8 @@ function Sim(){
 	this.controleur = null ; 
 	this.horloge    = 0.0 ; 
 	this.chrono     = null ; 
-	this.acteurs    = [] ; 
+	this.acteurs    = [] ;
+	this.grass = []; 
 
 	this.textureLoader = new THREE.TextureLoader() ; 
 }
@@ -82,8 +83,10 @@ Sim.prototype.actualiser = function(dt){
 	// Boucle ACTION
 	// =============
 
-	var n = this.acteurs.length ; 
-	for(var i=0; i<n; i++){
+	for(let i=0; i<this.acteurs.length; i++){
+		if (this.acteurs[i] === "undefined") {
+			continue;
+		}
 		this.acteurs[i].actualiser(dt) ; 
 	} ;
 
@@ -142,5 +145,15 @@ Acteur.prototype.setVisible = function(v){
 }
 
 
-Acteur.prototype.actualiser = function(dt){}
+Acteur.prototype.actualiser = function(dt){ }
+
+Acteur.prototype.delete = function() {
+	for (let i=0; i<this.sim.acteurs.length; i++) {
+		if (this.sim.acteurs[i].nom === this.nom) {
+			this.sim.acteurs.splice(i, 1);
+			this.sim.scene.remove(this.objet3d);
+			return;
+		}
+	}
+}
 	 
