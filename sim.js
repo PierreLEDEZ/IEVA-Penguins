@@ -15,7 +15,6 @@ function Sim(){
 	this.horloge    = 0.0 ; 
 	this.chrono     = null ; 
 	this.acteurs    = [] ;
-	this.grass = []; 
 
 	this.textureLoader = new THREE.TextureLoader() ; 
 }
@@ -152,6 +151,9 @@ Acteur.prototype.delete = function() {
 		if (this.sim.acteurs[i].nom === this.nom) {
 			this.sim.acteurs.splice(i, 1);
 			this.sim.scene.remove(this.objet3d);
+			this.sim.acteurs[i].objet3d.geometry.dispose();
+			this.sim.acteurs[i].objet3d.material.dispose();
+			this.sim.acteurs[i].objet3d = undefined;
 			return;
 		}
 	}

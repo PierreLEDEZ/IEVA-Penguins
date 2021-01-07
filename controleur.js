@@ -7,6 +7,8 @@ var ControleurCamera = function(object){
 
 	this.position  = new THREE.Vector3(1,1.7,5) ; 
 
+	this.nimbus_radius = 3;
+
 	this.angle     = 0.0 ; 
 	this.direction = new THREE.Vector3(1,0,0) ; 
 	this.cible     = new THREE.Vector3(2,1.7,5) ; 
