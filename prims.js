@@ -2,9 +2,9 @@
 // Fonctions utilitaires pour créer des objets graphiques 3d spécifiques aux projets à développer
 // ======================================================================================================================
 
-function createCylinder(nom, radius, height) {
+function createCylinder(nom, radius, height, color) {
 	let geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
-	let material = new THREE.MeshPhongMaterial( {color: 0xffff00, opacity: 0.5, transparent: true});
+	let material = new THREE.MeshPhongMaterial( {color: color , opacity: 0.1, transparent: true});
 	let cylinder = new THREE.Mesh(geometry, material);
 
 	return cylinder;
