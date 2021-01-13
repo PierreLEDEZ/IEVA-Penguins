@@ -1,5 +1,6 @@
 # IEVA-Penguins
 
+This project is part of the MSc of Computer Science (SIIA) at the University of Western Brittany.
 
 ## Usage
 
