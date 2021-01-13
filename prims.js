@@ -4,7 +4,7 @@
 
 function createCylinder(nom, radius, height, color) {
 	let geometry = new THREE.CylinderGeometry(radius, radius, height, 32);
-	let material = new THREE.MeshPhongMaterial( {color: color , opacity: 0.1, transparent: true});
+	let material = new THREE.MeshPhongMaterial( {color: color , opacity: 0.2, transparent: true});
 	let cylinder = new THREE.Mesh(geometry, material);
 
 	return cylinder;
