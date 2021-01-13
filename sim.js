@@ -59,6 +59,17 @@ Sim.prototype.init = function(params){
 
 }
 
+Sim.prototype.updateOverlay = function() {
+	pos_x_overlay = document.getElementById("pos_x");
+	pos_x_overlay.innerHTML = "X :" + this.controleur.position.x;
+
+	pos_z_overlay = document.getElementById("pos_z");
+	pos_z_overlay.innerHTML = "Z :" + this.controleur.position.z;
+
+	others_overlay = document.getElementById("others");
+	others_overlay.innerHTML = "Press K to show/hide Nimbus";
+}
+
 // Méthode de création du contenu du monde : à surcharger
 // ======================================================
 
@@ -92,6 +103,7 @@ Sim.prototype.actualiser = function(dt){
 	this.renderer.render(this.scene,this.camera) ; 
 
 	requestAnimationFrame(function(){that.actualiser();}) ; 
+	this.updateOverlay();
 }
 
 Sim.prototype.addActeur = function(act){

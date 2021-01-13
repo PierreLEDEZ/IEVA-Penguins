@@ -341,7 +341,6 @@ Acteur1.prototype.actualiser = function(dt){
 	this.checkFieldLimit();
 	this.move(dt);
 	this.nimbus.placeNimbus();
-	this.updateOverlay();
 }
 
 Acteur1.prototype.updatePenguinState = function(dt) {
@@ -385,25 +384,6 @@ Acteur1.prototype.getNewTarget = function(dt) {
 	this.objet3d.lookAt(this.target.x, 0, this.target.z);
 }
 
-Acteur1.prototype.updateOverlay = function() {
-	pos_x_overlay = document.getElementById("pos_x");
-	pos_x_overlay.innerHTML = "X :" + this.sim.controleur.position.x;
-
-	pos_z_overlay = document.getElementById("pos_z");
-	pos_z_overlay.innerHTML = "Z :" + this.sim.controleur.position.z;
-
-	target_overlay = document.getElementById("target");
-	target_overlay.innerHTML = JSON.stringify(this.target);
-
-	others_overlay = document.getElementById("others");
-	if (this.state === 0) {
-		others_overlay.innerHTML = "IDLE";
-	} else if (this.state === 1) {
-		others_overlay.innerHTML = "EAT";
-	} else {
-		others_overlay.innerHTML = "FLEE";
-	}
-}
 
 // La classe décrivant les touffes d'herbe
 // =======================================
