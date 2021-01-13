@@ -141,6 +141,12 @@ Acteur1.prototype.updatePheromones = function(dt) {
 
 Acteur1.prototype.actualiser = function(dt){
 
+	if (this.sim.controleur.showNimbus === true) {
+		this.nimbus.objet3d.visible = true;
+	} else {
+		this.nimbus.objet3d.visible = false;
+	}
+
 	let time = this.sim.horloge;
 
 	this.updateHunger(dt);

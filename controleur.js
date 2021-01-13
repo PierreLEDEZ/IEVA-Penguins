@@ -25,6 +25,7 @@ var ControleurCamera = function(object){
 	this.enArriere = false ; 
 	this.aGauche   = false ; 
 	this.aDroite   = false ; 
+	this.showNimbus = false;
 }
 
 
@@ -107,7 +108,7 @@ ControleurCamera.prototype.keyUp = function(event){
 
 ControleurCamera.prototype.keyDown = function(event){
 	//mouseClicked=false;
-	console.log("KEYDOWN") ; 
+	console.log(event.keyCode) ; 
 	switch(event.keyCode){
 		case 33 : // HAUT
 			this.plusHaut = true ; 
@@ -127,6 +128,9 @@ ControleurCamera.prototype.keyDown = function(event){
 		case 40 : // BAS
 			this.enArriere = true ;
 			break ; 
+		case 75:
+			this.showNimbus = !this.showNimbus;
+			break;
 	}
 }
 
