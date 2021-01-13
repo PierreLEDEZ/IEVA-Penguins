@@ -110,20 +110,19 @@ Nimbus.prototype.delete = function() {
 
 function Acteur1(nom,data,sim,vit){
 	Acteur.call(this,nom,data,sim) ;
-	this.clock = 0 
-
 	this.state = 0;
 
 	this.changeDirection = 0;
+
 	this.speed = vit;
 
 	this.pheromones = [];
 	this.secretionTime = 0;
+
 	this.findGrass = false;
 	this.hungerLevel = 0;
 
 	this.followPheromone = false;
-	this.nearbyPenguin = false;
 	this.followPenguin = false;
 
 	var repertoire = data.path + "/" ; 
@@ -142,226 +141,10 @@ function Acteur1(nom,data,sim,vit){
 Acteur1.prototype = Object.create(Acteur.prototype) ; 
 Acteur1.prototype.constructor = Acteur1 ;
 
-Acteur1.prototype.addPheromone = function(dt) {
-	let pheromone = new Pheromone("Pheromone_"+Math.random().toString(36).substr(2, 14), this, sim, 2, 5, this.getPosition().x, 0.5, this.getPosition().z);
-	this.sim.addActeur(pheromone);
-	pheromone.setPosition(this.getPosition().x, 0.5, this.getPosition().z);
-	this.pheromones.push(pheromone);
-}
-
-Acteur1.prototype.updatePheromones = function(dt) {
-	for (let i=0; i<this.pheromones.length; i++) {
-		this.pheromones[i].actualiser(dt, i);
-	}
-}
-
-Acteur1.prototype.actualiser = function(dt){
-
-	if (this.sim.controleur.showNimbus === true) {
-		this.nimbus.objet3d.visible = true;
-	} else {
-		this.nimbus.objet3d.visible = false;
-	}
-
-	let time = this.sim.horloge;
-
-	this.updateHunger(dt);
-
-	this.spawnPheromone(time);
-
-	this.updatePenguinState();
-
-	this.updatePheromones(dt);
-
-	if (this.state == 0) {
-		if (this.followPenguin === false && this.followPheromone === false && this.nearbyPenguin === false) {
-			if (time - this.changeDirection > 3) {
-				this.getNewTarget();
-				this.changeDirection = time;
-			}
-		}
-		this.checkPheromones();
-		this.checkPenguins();
-		this.checkFocus();
-	} else if (this.state == 1) {
-		if (!this.findGrass) {
-			if (time - this.changeDirection > 2) {
-				this.getNewTarget();
-				this.changeDirection = time;
-			}	
-		}
-		this.checkGrass();
-	} else {
-		this.getOppositeTarget();
-	}
-
-	this.checkFieldLimit();
-	this.move(dt);
-	this.nimbus.placeNimbus();
-	this.updateOverlay();
-}
-
-Acteur1.prototype.getNewTarget = function(dt) {
-	x = Math.floor(Math.random() * 100) - 50;
-	z = Math.floor(Math.random() * 100) - 50;
-	this.target = {"x": x, "y": 0, "z": z};
-	this.objet3d.lookAt(this.target.x, 0, this.target.z);
-}
+// ------------------------ Hunger ------------------------
 
 Acteur1.prototype.updateHunger = function(dt) {
 	this.hungerLevel += 2*dt;
-}
-
-Acteur1.prototype.spawnPheromone = function(time) {
-	if (time - this.secretionTime > 0.3) {
-		this.addPheromone();
-		this.secretionTime = time;
-	}
-}
-
-Acteur1.prototype.updatePenguinState = function(dt) {
-	if (this.state == 0) {
-		if (this.checkUser()) {
-			this.nimbus.setColor('0x800080');
-			this.state = 2;
-		}
-		if (this.hungerLevel > 15) {
-			this.nimbus.setColor('0xff0000');
-			this.state = 1;
-			this.getNewTarget();
-		}
-	} else if (this.state == 1) {
-		if (this.checkUser()) {
-			this.state = 2;
-			this.nimbus.setColor('0x800080');
-		}
-	} else if (this.state == 2) {
-		if (this.checkUser()) {
-			this.state = 2;
-			this.nimbus.setColor('0x800080');
-		} else {
-			this.state = 0;
-			this.nimbus.setColor('0xffff00');
-		}
-	} else {
-		console.log("Problem");
-	}
-}
-
-Acteur1.prototype.checkFocus = function(dt) {
-	this.followPenguin = false;
-	let actor;
-	for (let i=0; i<this.sim.tuxs.length; i++) {
-		actor = this.sim.tuxs[i];
-		if (actor.nom !== this.nom) {
-			if (actor.objet3d.position.distanceToSquared(this.objet3d.position) <= 10**2) {
-				var vector1 = new THREE.Vector3();
-				var vector2 = new THREE.Vector3();
-				vector1.subVectors(actor.objet3d.position, this.objet3d.position);
-				var dot_product = vector1.dot(vector2);
-				var angle_to_objet =(Math.acos(dot_product)) *100 /Math.PI;
-				if (angle_to_objet < 90) {
-					this.followPenguin = true;
-					this.nearbyPenguin = false;
-					this.target = {x: actor.getPosition().x, y: 0, z: actor.getPosition().z };
-					this.objet3d.lookAt(this.target.x, 0, this.target.z);
-					break;
-				}
-			}
-		}
-	}
-}
-
-Acteur1.prototype.checkPheromones = function(dt) {
-	this.followPheromone = false;
-	for (let i=0; i<this.sim.tuxs.length; i++) {
-		penguin = this.sim.tuxs[i];
-		if (penguin.nom !== this.nom) {
-			for (let j=0; j<penguin.pheromones.length; j++) {
-				pheromone = penguin.pheromones[j];
-				try {
-					if (Math.sqrt((pheromone.getPosition().x-this.getPosition().x)**2 + (pheromone.getPosition().z-this.getPosition().z)**2) < this.nimbus.radius) {
-						this.followPheromone = true;
-						this.target = {x: pheromone.getPosition().x, y: 0, z: pheromone.getPosition().z};
-						this.objet3d.lookAt(this.target.x, 0, this.target.z);
-						break;
-					}	
-				} catch (error) {
-					
-				}
-			}
-		}
-	}
-}
-
-Acteur1.prototype.checkPenguins = function(dt) {
-	this.nearbyPenguin = false;
-	for (let i=0; i<this.sim.tuxs.length; i++) {
-		penguin = this.sim.tuxs[i];
-		if (penguin.nom !== this.nom) {
-			let dist = Math.sqrt((penguin.getPosition().x - this.getPosition().x)**2 + (penguin.getPosition().z - this.getPosition().z)**2);
-			if (dist <= (penguin.nimbus.radius + this.nimbus.radius)) {
-				this.nearbyPenguin = true;
-				this.followPheromone = false;
-				this.target = {x: penguin.getPosition().x, y: 0, z: penguin.getPosition().z};
-				this.objet3d.lookAt(this.target.x, 0, this.target.z);
-				break;
-			}
-		}
-	}
-}
-
-Acteur1.prototype.checkUser = function(dt) {
-	for (let i=0; i<this.sim.tuxs.length; i++) {
-		let penguin = this.sim.tuxs[i];
-		if (penguin.nom === this.nom) {
-			let dist = Math.sqrt((this.sim.controleur.position.x - penguin.getPosition().x)**2 + (this.sim.controleur.position.z - penguin.getPosition().z)**2);
-			if (dist <= (penguin.nimbus.radius + this.sim.controleur.nimbus_radius)) {
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
-Acteur1.prototype.getOppositeTarget = function(dt) {
-	let new_x = 2*this.getPosition().x - this.target.x;
-	let new_z = 2*this.getPosition().z - this.target.z;
-	this.target = {x: new_x, y: 0, z: new_z};
-	this.objet3d.lookAt(this.target.x, 0, this.target.z);
-}
-
-Acteur1.prototype.updateOverlay = function() {
-	pos_x_overlay = document.getElementById("pos_x");
-	pos_x_overlay.innerHTML = "X :" + this.sim.controleur.position.x;
-
-	pos_z_overlay = document.getElementById("pos_z");
-	pos_z_overlay.innerHTML = "Z :" + this.sim.controleur.position.z;
-
-	target_overlay = document.getElementById("target");
-	target_overlay.innerHTML = JSON.stringify(this.target);
-
-	others_overlay = document.getElementById("others");
-	if (this.state === 0) {
-		others_overlay.innerHTML = "IDLE";
-	} else if (this.state === 1) {
-		others_overlay.innerHTML = "EAT";
-	} else {
-		others_overlay.innerHTML = "FLEE";
-	}
-}
-
-Acteur1.prototype.move = function(dt) {
-	this.objet3d.lookAt(this.target.x, 0, this.target.z);
-	this.objet3d.translateZ(this.speed*dt);
-}
-
-Acteur1.prototype.checkFieldLimit = function(dt){
-	let pos = this.getPosition();
-	if (pos.x > 50 || pos.x < -50 || pos.z > 50 || pos.z < -50) {
-		this.getNewTarget();
-		this.objet3d.lookAt(this.target.x, 0, this.target.z);
-	}
 }
 
 Acteur1.prototype.checkGrass = function(dt) {
@@ -396,6 +179,232 @@ Acteur1.prototype.checkGrass = function(dt) {
 	}
 }
 
+// ------------------------ Pheromone ------------------------
+
+Acteur1.prototype.spawnPheromone = function(time) {
+	if (time - this.secretionTime > 0.3) {
+		this.addPheromone();
+		this.secretionTime = time;
+	}
+}
+
+Acteur1.prototype.addPheromone = function(dt) {
+	let pheromone = new Pheromone("Pheromone_"+Math.random().toString(36).substr(2, 14), this, sim, 2, 3, this.getPosition().x, 0.5, this.getPosition().z);
+	this.sim.addActeur(pheromone);
+	pheromone.setPosition(this.getPosition().x, 0.5, this.getPosition().z);
+	this.pheromones.push(pheromone);
+}
+
+Acteur1.prototype.updatePheromones = function(dt) {
+	for (let i=0; i<this.pheromones.length; i++) {
+		this.pheromones[i].actualiser(dt, i);
+	}
+}
+
+Acteur1.prototype.checkPheromones = function(dt) {
+	this.followPheromone = false;
+	for (let i=0; i<this.sim.tuxs.length; i++) {
+		penguin = this.sim.tuxs[i];
+		if (penguin.nom !== this.nom) {
+			for (let j=0; j<penguin.pheromones.length; j++) {
+				pheromone = penguin.pheromones[j];
+				try {
+					if (Math.sqrt((pheromone.getPosition().x-this.getPosition().x)**2 + (pheromone.getPosition().z-this.getPosition().z)**2) < this.nimbus.radius) {
+						this.followPheromone = true;
+						this.target = {x: pheromone.getPosition().x, y: 0, z: pheromone.getPosition().z};
+						this.objet3d.lookAt(this.target.x, 0, this.target.z);
+						break;
+					}	
+				} catch (error) {
+					
+				}
+			}
+		}
+	}
+}
+
+// ------------------------ Pengouins ------------------------
+
+Acteur1.prototype.checkFocus = function(dt) {
+	let penguin;
+	for (let i=0; i<this.sim.tuxs.length; i++) {
+		penguin = this.sim.tuxs[i];
+		if (penguin.nom !== this.nom) {
+			if (penguin.objet3d.position.distanceToSquared(this.objet3d.position) <= 15) {
+				var target_vector= new THREE.Vector3();
+				target_vector.subVectors(penguin.objet3d.position, this.objet3d.position);
+				var facing_vector= new THREE.Vector3();
+				this.objet3d.getWorldDirection(facing_vector);
+				if (Math.acos(target_vector.dot(facing_vector)) *100 /Math.PI < 90) {
+					this.followPenguin = true;
+					this.target = {x: penguin.getPosition().x, y: 0, z: penguin.getPosition().z };
+					this.objet3d.lookAt(this.target.x, 0, this.target.z);
+					break;
+				}
+			}
+		}
+	}
+}
+
+Acteur1.prototype.checkPenguins = function(dt) {
+	this.followPenguin = false;
+	for (let i=0; i<this.sim.tuxs.length; i++) {
+		penguin = this.sim.tuxs[i];
+		if (penguin.nom !== this.nom) {
+			let dist = Math.sqrt((penguin.getPosition().x - this.getPosition().x)**2 + (penguin.getPosition().z - this.getPosition().z)**2);
+			if (dist <= (penguin.nimbus.radius + this.nimbus.radius)) {
+				this.followPenguin = true;
+				this.followPheromone = false;
+				this.target = {x: penguin.getPosition().x, y: 0, z: penguin.getPosition().z};
+				this.objet3d.lookAt(this.target.x, 0, this.target.z);
+				break;
+			}
+		}
+	}
+}
+
+// ------------------------ User ------------------------
+
+Acteur1.prototype.checkUser = function(dt) {
+	for (let i=0; i<this.sim.tuxs.length; i++) {
+		let penguin = this.sim.tuxs[i];
+		if (penguin.nom === this.nom) {
+			let dist = Math.sqrt((this.sim.controleur.position.x - penguin.getPosition().x)**2 + (this.sim.controleur.position.z - penguin.getPosition().z)**2);
+			if (dist <= (penguin.nimbus.radius + this.sim.controleur.nimbus_radius)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+Acteur1.prototype.getOppositeTarget = function(dt) {
+	let new_x = 2*this.getPosition().x - this.target.x;
+	let new_z = 2*this.getPosition().z - this.target.z;
+	this.target = {x: new_x, y: 0, z: new_z};
+	this.objet3d.lookAt(this.target.x, 0, this.target.z);
+}
+
+
+// ------------------------ Environnement ------------------------
+
+Acteur1.prototype.checkFieldLimit = function(dt){
+	let pos = this.getPosition();
+	if (pos.x > 50 || pos.x < -50 || pos.z > 50 || pos.z < -50) {
+		this.getNewTarget();
+		this.objet3d.lookAt(this.target.x, 0, this.target.z);
+	}
+}
+
+// ------------------------ Main ------------------------
+
+Acteur1.prototype.actualiser = function(dt){
+
+	if (this.sim.controleur.showNimbus === true) {
+		this.nimbus.objet3d.visible = true;
+	} else {
+		this.nimbus.objet3d.visible = false;
+	}
+
+	let time = this.sim.horloge;
+
+	this.updateHunger(dt);
+
+	this.spawnPheromone(time);
+
+	this.updatePenguinState();
+
+	this.updatePheromones(dt);
+
+	if (this.state == 0) {
+		if (this.followPenguin === false && this.followPheromone === false) {
+			if (time - this.changeDirection > 3) {
+				this.getNewTarget();
+				this.changeDirection = time;
+			}
+		}
+		this.checkPheromones();
+		this.checkPenguins();
+		this.checkFocus();
+	} else if (this.state == 1) {
+		if (!this.findGrass) {
+			if (time - this.changeDirection > 2) {
+				this.getNewTarget();
+				this.changeDirection = time;
+			}	
+		}
+		this.checkGrass();
+	} else {
+		this.getOppositeTarget();
+	}
+
+	this.checkFieldLimit();
+	this.move(dt);
+	this.nimbus.placeNimbus();
+	this.updateOverlay();
+}
+
+Acteur1.prototype.updatePenguinState = function(dt) {
+	if (this.state == 0) {
+		if (this.checkUser()) {
+			this.nimbus.setColor('0x800080');
+			this.state = 2;
+		}
+		if (this.hungerLevel > 15) {
+			this.nimbus.setColor('0xff0000');
+			this.state = 1;
+			this.getNewTarget();
+		}
+	} else if (this.state == 1) {
+		if (this.checkUser()) {
+			this.state = 2;
+			this.nimbus.setColor('0x800080');
+		}
+	} else if (this.state == 2) {
+		if (this.checkUser()) {
+			this.state = 2;
+			this.nimbus.setColor('0x800080');
+		} else {
+			this.state = 0;
+			this.nimbus.setColor('0xffff00');
+		}
+	} else {
+		console.log("Problem");
+	}
+}
+
+Acteur1.prototype.move = function(dt) {
+	this.objet3d.lookAt(this.target.x, 0, this.target.z);
+	this.objet3d.translateZ(this.speed*dt);
+}
+
+Acteur1.prototype.getNewTarget = function(dt) {
+	x = Math.floor(Math.random() * 100) - 50;
+	z = Math.floor(Math.random() * 100) - 50;
+	this.target = {"x": x, "y": 0, "z": z};
+	this.objet3d.lookAt(this.target.x, 0, this.target.z);
+}
+
+Acteur1.prototype.updateOverlay = function() {
+	pos_x_overlay = document.getElementById("pos_x");
+	pos_x_overlay.innerHTML = "X :" + this.sim.controleur.position.x;
+
+	pos_z_overlay = document.getElementById("pos_z");
+	pos_z_overlay.innerHTML = "Z :" + this.sim.controleur.position.z;
+
+	target_overlay = document.getElementById("target");
+	target_overlay.innerHTML = JSON.stringify(this.target);
+
+	others_overlay = document.getElementById("others");
+	if (this.state === 0) {
+		others_overlay.innerHTML = "IDLE";
+	} else if (this.state === 1) {
+		others_overlay.innerHTML = "EAT";
+	} else {
+		others_overlay.innerHTML = "FLEE";
+	}
+}
+
 // La classe décrivant les touffes d'herbe
 // =======================================
 
@@ -414,6 +423,16 @@ function Herbe(nom,data,sim){
 }
 Herbe.prototype = Object.create(Acteur.prototype) ; 
 Herbe.prototype.constructor = Herbe ; 
+
+Herbe.prototype.actualiser = function(dt){
+
+	if (this.sim.controleur.showNimbus === true) {
+		this.nimbus.objet3d.visible = true;
+	} else {
+		this.nimbus.objet3d.visible = false;
+	}
+
+}
 
 Herbe.prototype.delete = function() {
 	this.nimbus.delete();
@@ -473,7 +492,7 @@ Pheromone.prototype = Object.create(Acteur.prototype) ;
 Pheromone.prototype.constructor = Pheromone;
 
 Pheromone.prototype.actualiser = function(dt, index){
-	this.age -= 0.4*dt;
+	this.age -= 1.5*dt;
 	if(this.age < 0) {
 		this.delete();
 		this.parent.pheromones.splice(index, 1);
@@ -481,7 +500,7 @@ Pheromone.prototype.actualiser = function(dt, index){
 	}
 	let scale_factor = 10;
 	this.objet3d.geometry.scale(1-dt/scale_factor,1-dt/scale_factor,1-dt/scale_factor);
-	this.objet3d.material.opacity -= dt/5;	
+	this.objet3d.material.opacity -= 0.2*dt;	
 }
 
 Pheromone.prototype.delete = function() {
