@@ -75,13 +75,18 @@ Appli.prototype.creerScene = function(params){
 
 
 // ========================================================================================================
-function Nimbus(name, parent, sim, radius, height) {
+function Nimbus(name, parent, sim, radius, height, type="cylinder") {
 	Acteur.call(this, name, {radius: radius, height: height}, sim);
 	this.parent = parent;
 	this.radius = radius;
 	this.height = height;
+	this.type = type;
 
-	var obj = createCylinder(name, radius, height, 0xffff00);
+	if (type === "cylinder") {
+		var obj = createCylinder(name, radius, height, 0xffff00);
+	} else {
+		var obj = creerSphere(name,{rayon:radius, couleur: 0xffff00});
+	}
 	this.setObjet3d(obj);
 }
 Nimbus.prototype = Object.create(Acteur.prototype);
@@ -92,7 +97,11 @@ Nimbus.prototype.setColor = function(color) {
 }
 
 Nimbus.prototype.placeNimbus = function(dt) {
-	this.setPosition(this.parent.getPosition().x, 0, this.parent.getPosition().z);
+	if (this.type === "sphere") {
+		this.setPosition(this.parent.position.x, 0.5, this.parent.position.z);	
+	} else {
+		this.setPosition(this.parent.getPosition().x, 0, this.parent.getPosition().z);
+	}
 }
 
 Nimbus.prototype.delete = function() {
@@ -397,7 +406,7 @@ function Herbe(nom,data,sim){
 	var sph = creerSphere(nom,{rayon:rayon, couleur:couleur}) ;
 	this.setObjet3d(sph) ; 
 
-	this.nimbus = new Nimbus("blabla", this, sim, 0.5, 0.5);
+	this.nimbus = new Nimbus("nimbus"+nom, this, sim, 0.5, 0.5);
 	sim.addActeur(this.nimbus);
 	this.nimbus.placeNimbus();
 }
@@ -467,11 +476,21 @@ function Pheromone(name, parent, sim, radius, age, x, y, z){
 	sph.material.transparent = true;
 	sph.material.opacity = 1;
 	this.setObjet3d(sph);
+
+	this.nimbus = new Nimbus("nimbus"+name, this, sim, 0.5, 0.5, type="sphere");
+	sim.addActeur(this.nimbus);
+	this.nimbus.placeNimbus();
 }
 Pheromone.prototype = Object.create(Acteur.prototype) ;
 Pheromone.prototype.constructor = Pheromone;
 
 Pheromone.prototype.actualiser = function(dt, index){
+	this.nimbus.placeNimbus();
+	if (this.sim.controleur.showNimbus === true) {
+		this.nimbus.objet3d.visible = true;
+	} else {
+		this.nimbus.objet3d.visible = false;
+	}
 	this.age -= 1.5*dt;
 	if(this.age < 0) {
 		this.delete();
@@ -484,6 +503,7 @@ Pheromone.prototype.actualiser = function(dt, index){
 }
 
 Pheromone.prototype.delete = function() {
+	this.nimbus.delete();
 	for (let i=0; i<this.sim.acteurs.length; i++) {
 		if (this.sim.acteurs[i].nom === this.nom) {
 			this.sim.acteurs.splice(i, 1);
